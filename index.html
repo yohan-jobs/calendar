@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'; object-src 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>대기업 생산직 채용 달력</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a plant-floor status board. Open postings on top as signal cards, month grid in the middle, company ledger below. */
+:root{
+  --bg:#EEF1F4; --surface:#FFFFFF; --ink:#14202B; --muted:#586878; --line:#D3DAE1; --signal:#1F6FEB; --signal-soft:#E3EEFD;
+  --ok:#1F7A4D; --chip:#DCE4EC; --onsignal:#FFFFFF; --warn:#8A5A00; --warn-soft:#FFF1D1;
+  --font-display:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --font-body:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151B; --surface:#161F27; --ink:#E7EDF2; --muted:#94A4B2; --line:#2A3641; --signal:#5CA3FF; --signal-soft:#14283F;
+    --ok:#5ED19A; --chip:#27333E; --onsignal:#04101D; --warn:#F2C25B; --warn-soft:#33290F; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151B; --surface:#161F27; --ink:#E7EDF2; --muted:#94A4B2; --line:#2A3641; --signal:#5CA3FF; --signal-soft:#14283F;
+  --ok:#5ED19A; --chip:#27333E; --onsignal:#04101D; --warn:#F2C25B; --warn-soft:#33290F; color-scheme:dark;
+}
+.cc{--c:var(--cl)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .cc{--c:var(--cd)}}
+:root[data-theme="dark"] .cc{--c:var(--cd)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.6;-webkit-text-size-adjust:100%}
+.wrap{max-width:960px;margin:0 auto;padding:24px 16px 56px;display:flex;flex-direction:column;gap:32px}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance}
+a{color:inherit}
+a:focus-visible,button:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.num{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+header .kicker{font-size:13px;color:var(--muted);letter-spacing:.02em}
+header h1{font-size:clamp(28px,6vw,40px);font-weight:900;line-height:1.2;margin-top:4px}
+header .asof{margin-top:12px;display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--surface)}
+header .asof b{color:var(--ink);font-weight:700}
+
+section>h2{font-size:20px;font-weight:700;display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+section>h2 .count{font-family:var(--font-mono);font-size:14px;color:var(--muted);font-weight:500}
+
+.open-grid{align-items:stretch;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.open-card{background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c,var(--signal));border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.open-card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.open-card .co{font-size:22px;font-weight:900;line-height:1.2}
+.open-card .role{font-size:14px;color:var(--muted)}
+.dday{font-family:var(--font-mono);font-weight:600;font-size:15px;background:var(--signal);color:#fff;border-radius:6px;padding:2px 10px;white-space:nowrap}
+:root[data-theme="dark"] .dday{color:#04101d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .dday{color:#04101d}}
+.open-card dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:14px}
+.open-card dt{color:var(--muted)}
+.open-card .btn{margin-top:auto;align-self:stretch;text-align:center;justify-content:center}
+.open-card dl{margin-bottom:6px}
+.open-card dd{margin:0}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:8px;border:1px solid var(--signal);background:var(--signal);color:#fff;font-weight:700;text-decoration:none;font-size:15px}
+:root[data-theme="dark"] .btn{color:#04101d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .btn{color:#04101d}}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.empty{border:1px dashed var(--line);border-radius:10px;padding:20px;color:var(--muted);background:var(--surface)}
+
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.cal-head h3{font-size:18px;font-weight:700}
+.cal-head button{min-width:44px;min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:18px;cursor:pointer}
+.cal-head button:disabled{opacity:.35;cursor:default}
+.dowrow{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-bottom:4px}
+.dow{font-size:12px;text-align:center;color:var(--muted);padding:2px 0}
+.dow:first-child{color:var(--ink);font-weight:700}
+.weeks{border-top:1px solid var(--line);border-left:1px solid var(--line);border-radius:6px;overflow:hidden}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));column-gap:0;row-gap:2px;border-bottom:1px solid var(--line)}
+.cell{border-right:1px solid var(--line);padding:2px 4px;min-height:48px;background:var(--surface)}
+.cell.out{background:var(--bg)}
+.cell.out .n{opacity:.45}
+.cell .n{font-size:12px;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px}
+.cell.today .n{background:var(--ink);color:var(--bg);font-weight:600}
+.bar{height:22px;margin:0 2px;padding:0 6px;border-radius:4px;font-size:11px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:var(--chip);color:var(--ink);z-index:1;font-weight:500}
+.bar:not(.live){background:color-mix(in srgb,var(--c,var(--muted)) 22%,var(--surface))}
+.bar:not(.live):not(.cl){box-shadow:inset 3px 0 0 var(--c,var(--muted))}
+.bar.live{background:var(--c,var(--signal));color:var(--onsignal);font-weight:700}
+.bar.cl{margin-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
+.bar.cr{margin-right:0;border-top-right-radius:0;border-bottom-right-radius:0}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:22px;height:10px;border-radius:3px;background:var(--chip)}
+.legend i.live{background:var(--signal)}
+.daylist{margin-top:16px;border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:10px;font-size:14px}
+.daylist .row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.tag{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:0 8px;color:var(--muted);white-space:nowrap}
+.tag.live{border-color:var(--signal);color:var(--signal);font-weight:700}
+
+.search{display:block;margin:0 0 10px}
+.search input{width:100%;min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:15px}
+.search input:focus{outline:2px solid var(--signal);outline-offset:1px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 16px;min-width:104px}
+.stat b{display:block;font-family:var(--font-mono);font-size:24px;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+.stat.hot b{color:var(--signal)}
+.findbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.findbar .search{flex:1 1 220px;margin:0}
+.findbar select{flex:0 1 160px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);font:inherit;font-size:15px}
+.lsf{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.lslist{display:flex;flex-direction:column;gap:10px}
+.lsi{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--c,var(--line));border-radius:10px;padding:12px 14px}
+.lsi .co{font-weight:900;font-size:16px}
+.lsi .t{grid-column:2;font-size:14px}
+.lsi .meta{grid-column:2;font-size:12px;color:var(--muted)}
+.lsi .d{grid-row:1 / span 3;grid-column:3;text-align:right;font-family:var(--font-mono);font-size:13px;color:var(--muted);white-space:nowrap}
+.lsi .d b{display:block;font-size:18px;color:var(--ink)}
+.lsi.live .d b{color:var(--signal)}
+.lsi.past{opacity:.72}
+.chnote{font-size:13px;color:var(--muted);margin:0 0 8px}
+#chapters{margin-bottom:12px}
+.tabs{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--surface);margin-bottom:12px;gap:2px}
+.tabs button{min-height:40px;padding:0 18px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:14px;font-weight:500;cursor:pointer}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);font-weight:700}
+.tlwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.tl{min-width:900px;position:relative}
+.tlrow,.tlhead{display:flex;border-bottom:1px solid var(--line)}
+.tlrow:last-child{border-bottom:0}
+.tlname{flex:0 0 108px;position:sticky;left:0;z-index:3;background:var(--surface);padding:0 10px;display:flex;align-items:center;font-weight:700;font-size:14px;border-right:1px solid var(--line)}
+.tlname::before{content:"";flex:0 0 10px;height:10px;border-radius:3px;background:var(--c,var(--muted));margin-right:7px}
+.tlrow.isopen .tlname{font-weight:900}
+.tltrack{flex:1;position:relative;height:56px}
+.tlhead .tltrack{height:30px}
+.mline{position:absolute;top:0;bottom:0;border-left:1px solid var(--line)}
+.mlab{position:absolute;top:6px;font-size:12px;color:var(--muted);padding-left:6px}
+.tline{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);z-index:2;opacity:.8}
+.tlhead .tline::after{content:"오늘";position:absolute;top:5px;left:5px;font-size:11px;font-weight:700;color:var(--bg);background:var(--ink);border-radius:4px;padding:0 5px;line-height:18px}
+.tbar{position:absolute;top:20px;height:16px;border-radius:4px;min-width:8px;background:color-mix(in srgb,var(--c,var(--muted)) 28%,var(--surface));border:1px solid var(--c,var(--muted))}
+.tbar.live{background:var(--c,var(--signal))}
+.tdot{position:absolute;top:22px;width:12px;height:12px;margin-left:-6px;transform:rotate(45deg);background:var(--surface);border:2px solid var(--c,var(--muted))}
+.tdot.live{background:var(--c)}
+.tlab{position:absolute;font-size:11px;line-height:14px;white-space:nowrap;color:var(--muted);font-family:var(--font-mono);z-index:1}
+.tlab.up{top:3px}
+.tlab.dn{top:39px}
+.tlab.live{color:var(--ink);font-weight:700}
+.tlhead .tlname::before{display:none}
+.tlhead .tline::after{white-space:nowrap}
+.tlnote{font-size:12px;color:var(--muted);margin-top:10px}
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-size:14px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ledger{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.co-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.co-card header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.co-card{border-top:4px solid var(--c,var(--line))}
+.co-card h3{font-size:18px;font-weight:700}
+.status{font-size:12px;border-radius:999px;padding:1px 10px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.status.live{background:var(--signal);border-color:var(--signal);color:#fff;font-weight:700}
+:root[data-theme="dark"] .status.live{color:#04101d}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .status.live{color:#04101d}}
+.status.check{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.co-card .cat{font-size:12px;color:var(--muted)}
+.co-card dl{display:grid;grid-template-columns:5.5em 1fr;gap:4px 10px;margin:0;font-size:14px}
+.co-card dt{color:var(--muted)}
+.co-card dd{margin:0}
+.co-card .est{color:var(--warn)}
+.co-card a.link{font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;align-self:flex-start;min-height:32px;display:inline-flex;align-items:center}
+.nodata{background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:16px;font-size:14px;color:var(--muted)}
+.nodata b{color:var(--ink)}
+.notes{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.notes b{color:var(--ink)}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:520px){.day{min-height:46px}}
+@media (prefers-reduced-motion: no-preference){.day,.chip,.btn{transition:background .15s,border-color .15s}}
+
+[data-co]{cursor:pointer}
+.co-card[data-co]:hover,.lsi[data-co]:hover{box-shadow:0 2px 10px rgba(0,0,0,.12)}
+dialog#dt{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--text,inherit);padding:0;width:min(520px,94vw);max-height:88vh;overflow:auto}
+dialog#dt::backdrop{background:rgba(0,0,0,.45)}
+#dt .dh{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px;border-top:5px solid var(--c,var(--line))}
+#dt .dh h3{font-size:20px;margin:0}
+#dt .dh button{font-size:20px;min-width:44px;min-height:44px;border:0;background:transparent;color:inherit;cursor:pointer}
+#dt .db{padding:0 18px 18px}
+#dt dl{display:grid;grid-template-columns:5.5em 1fr;gap:8px 12px;margin:0;font-size:15px}
+#dt dt{color:var(--muted)}#dt dd{margin:0}
+#dt .sch{margin:14px 0 0;padding:0;list-style:none;font-size:14px}
+#dt .sch li{padding:6px 0;border-top:1px solid var(--line)}
+#dt b.pay{color:var(--signal,#1a56db);font-weight:800}
+#dt .nt{margin-top:14px;font-size:13px;color:var(--muted);line-height:1.5}
+.promo{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;background:var(--surface);border:1px solid var(--line);border-left:6px solid #e11d2e;border-radius:10px;padding:16px}
+.promo strong{font-size:17px}
+.promo p{margin:4px 0 0;font-size:14px;color:var(--muted)}
+.hdr-yt{display:inline-flex;align-items:center;min-height:44px;margin-top:8px;font-size:14px;font-weight:700;color:#e11d2e;text-decoration:underline;text-underline-offset:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="kicker">대기업 생산직에 대한 모든 것</div>
+  <h1>대기업 생산직 채용 달력</h1>
+  <a class="hdr-yt" href="https://www.youtube.com/@bozone9station" target="_blank" rel="noopener noreferrer">▶ 유튜브 채널 구독하고 새 영상 받기</a>
+  <div class="asof"><span>마지막 확인</span><b class="num">2026.11.15</b><span>· 공고는 회사 사정으로 바뀌거나 연장될 수 있어요</span></div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<section aria-labelledby="open-h">
+  <h2 id="open-h">지금 접수 중 <span class="count" id="open-count"></span></h2>
+  <div class="open-grid" id="open-grid"></div>
+</section>
+
+<section aria-labelledby="cal-h">
+  <h2 id="cal-h">접수 일정</h2>
+  <p class="chnote">회사명을 검색하거나 분야를 누르면 달력과 회사별 정리가 그 회사만 보여줘요.</p>
+  <div class="findbar">
+    <label class="search"><span class="sr">회사명 검색</span><input type="search" id="q" placeholder="회사명으로 검색 (예: 기아, 포스코)" autocomplete="off"></label>
+    <label><span class="sr">지역</span><select id="rg"><option value="">전체 지역</option></select></label>
+  </div>
+  <div class="filters" id="chapters" role="group" aria-label="분야 선택"></div>
+  <div class="tabs" role="group" aria-label="보기 방식">
+    <button type="button" id="tab-mc" aria-pressed="true">월 달력</button>
+    <button type="button" id="tab-tl" aria-pressed="false">한눈에 보기</button>
+    <button type="button" id="tab-ls" aria-pressed="false">목록</button>
+  </div>
+  <div id="tl" hidden>
+    <div class="tlwrap" id="tlhost"></div>
+    <div class="tlnote">회사마다 색이 달라요. 진한 막대는 지금 접수 중, 연한 막대는 지난 공고예요. 마름모는 마감일만 확인된 공고예요. 옆으로 밀면 다른 달이 보여요.</div>
+  </div>
+  <div id="ls" hidden>
+    <div class="lsf" id="lsf" role="group" aria-label="접수 상태"></div>
+    <div class="lslist" id="lslist"></div>
+  </div>
+  <div class="cal" id="mc">
+    <div class="cal-head">
+      <button id="prev" type="button" aria-label="이전 달">‹</button>
+      <h3 id="cal-title" class="num"></h3>
+      <button id="next" type="button" aria-label="다음 달">›</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="legend">
+      <span><i class="live"></i>진한 색은 지금 접수 중</span>
+      <span><i></i>연한 색은 접수가 끝난 공고</span>
+      <span>막대 하나가 접수 기간이고, "마감"이라고 적힌 칸은 마감일만 확인된 공고예요</span>
+    </div>
+    <div class="daylist" id="daylist" aria-live="polite"></div>
+  </div>
+</section>
+
+<section aria-labelledby="co-h">
+  <h2 id="co-h">회사별 정리 <span class="count" id="co-count"></span></h2>
+  <div class="filters" id="filters" role="group" aria-label="산업 필터"></div>
+  <div class="ledger" id="ledger"></div>
+</section>
+
+<section aria-labelledby="nd-h">
+  <h2 id="nd-h">이번에 확인하지 못한 곳</h2>
+  <div class="nodata" id="nodata"></div>
+</section>
+
+<section class="notes" aria-labelledby="nt-h">
+  <h2 id="nt-h">보는 법</h2>
+  <div><b>예상 시기</b>는 올해와 작년 접수 패턴을 보고 적은 것이고 확정된 일정이 아니에요.</div>
+  <div><b>접수일 미확인</b>이라고 적힌 곳은 공고가 있었다는 것만 확인했어요. 날짜는 공식 채용 페이지에서 보세요.</div>
+  <div>학력 조건과 전형은 공고마다 달라요. 지원 전에 꼭 공식 공고문을 확인하세요.</div>
+</section>
+
+<section class="promo" aria-label="유튜브 채널">
+  <div>
+    <strong>대기업 생산직에 대한 모든 것</strong>
+    <p>마이스터고·공고 루트, 전문대 루트, 지역별 대기업 정보까지 영상으로 하나씩 정리합니다.</p>
+  </div>
+  <a class="btn" href="https://www.youtube.com/@bozone9station" target="_blank" rel="noopener noreferrer">유튜브 채널 보러가기</a>
+</section>
+<footer>
+  틀린 내용이나 빠진 공고는 채널 댓글로 알려주세요. 이 페이지는 공개된 채용 정보를 바탕으로 정리했고 연봉은 대략적인 수치예요. 지원 전에 공식 공고를 꼭 확인하세요.
+</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  /* ---------- data (확인일 2026-11-15) ---------- */
+  var EVENTS=[
+    {co:"포스코",t:"생산기술직 인턴 (상반기)",s:null,e:"2026-03-11"},
+    {co:"SK하이닉스",t:"전임직(생산직) 메인트·오퍼레이터 (4월)",s:"2026-04-13",e:"2026-04-22"},
+    {co:"현대자동차",t:"모빌리티 기술인력 · 자동차 생산",s:"2026-06-15",e:"2026-06-24",et:"17:00"},
+    {co:"기아",t:"엔지니어(생산직)",s:"2026-08-10",e:"2026-08-21",et:"14:00"},
+    {co:"포스코",t:"생산기술직 인턴 (하반기)",s:"2026-08-31",e:"2026-09-09"},
+    {co:"SK에너지",t:"울산CLX 기술직 인턴 (생산·설비)",s:"2026-09-15",e:"2026-09-27"},
+    {co:"LG에너지솔루션",t:"Cell선행 생산운영 현장 계약직",s:null,e:"2026-09-20"},
+    {co:"LG에너지솔루션",t:"미래기술 생산운영 현장 계약직",s:null,e:"2026-10-07"},
+    {co:"S-OIL",t:"생산직 신입사원",s:"2026-10-08",e:"2026-10-25"},
+    {co:"현대제철",t:"일반직 하반기 신입 (생산관리·정비)",s:"2026-10-22",e:"2026-11-09"},
+    {co:"HD현대중공업",t:"용연공장 생산기술직 기간제 (경력)",s:null,e:"2026-11-01"},
+    {co:"기아",t:"엔지니어(생산직) 설비기술인력",s:"2026-11-05",e:"2026-11-18",et:"15:00"},
+    {co:"SK하이닉스",t:"전임직(생산직) 메인트·오퍼레이터 (11월)",s:"2026-11-10",e:"2026-11-17",et:"15:00"},
+    {co:"한화오션",t:"상반기 생산직 신입사원",s:null,e:"2026-04-30"},
+    {co:"현대트랜시스",t:"생산직 사원 (기간제)",s:"2026-07-31",e:"2026-08-09"},
+    {co:"현대위아",t:"하반기 전문 기능인력(생산직) 신입",s:null,e:"2026-10-06",et:"10:00"},
+    {co:"SK바이오사이언스",t:"하반기 신입 원액/완제생산(DS/DP)",s:"2026-10-08",e:"2026-10-21"},
+    {co:"현대로템",t:"기술직(생산직) 신입",s:"2026-10-16",e:"2026-10-25"},
+    {co:"동국제강",t:"인천공장 생산직 (계약직)",s:null,e:"2026-07-26"},
+    {co:"동국제강",t:"포항공장 생산직 신입 (계약직)",s:null,e:"2026-08-02"},
+    {co:"동국제강",t:"당진공장 생산직 천장크레인 (전환형 기간제)",s:"2026-08-26",e:"2026-09-03"},
+    {co:"동국제강",t:"당진공장 생산직 용접 (계약직)",s:null,e:"2026-10-21"},
+    {co:"세아제강",t:"포항공장 현장전문직 (생산·설비·출하)",s:null,e:"2026-08-30"},
+    {co:"한국타이어",t:"한국공장 생산기능직 인턴 (설비 보전)",s:null,e:"2026-03-27"},
+    {co:"코오롱인더스트리",t:"김천 생산관리원 (계약직)",s:null,e:"2026-09-30"},
+    {co:"삼성전기",t:"5급 계약직 제조직",s:null,e:"2026-09-30",et:"11:00"},
+    {co:"LS일렉트릭",t:"부산사업장 제조(생산) 촉탁직",s:null,e:"2026-10-04",et:"23:00"},
+    {co:"HD현대마린엔진",t:"대구 생산계약직",s:null,e:"2026-10-11"},
+    {co:"HD현대오씨아이",t:"생산전문인턴 (공정운전·설비/품질)",s:"2026-06-30",e:"2026-07-19"},
+    {co:"GS칼텍스",t:"생산기술직 인턴 (부두시설운전원)",s:null,e:"2026-04-29"},
+    {co:"한화토탈에너지스",t:"1차 전문직 신입 (생산·공정)",s:"2026-07-06",e:"2026-07-19"},
+    {co:"롯데칠성음료",t:"안성공장 생산 계약직",s:"2026-07-10",e:"2026-07-21",et:"15:00"},
+    {co:"쿠쿠전자",t:"4분기 생산직 사원",s:null,e:"2026-11-22",live:true},
+    {co:"삼성전자",t:"생산직 공고 (직무는 공고문 확인)",s:null,e:"2026-11-17",ref:1},
+    {co:"삼성전기",t:"세종·수원·부산 생산직 (계약직)",s:null,e:"2026-11-17",ref:1},
+    {co:"한온시스템",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-16",ref:1},
+    {co:"한화글로벌",t:"여수 생산 담당자",s:null,e:"2026-11-15",ref:1},
+    {co:"세아제강",t:"창원 생산·공무 담당자",s:null,e:"2026-11-15",ref:1},
+    {co:"동서석유화학",t:"울산 생산·공무 담당자",s:null,e:"2026-11-15",ref:1},
+    {co:"STX엔진",t:"창원 생산·품질·물류·공무 담당자",s:null,e:"2026-11-15",ref:1},
+    {co:"무림페이퍼",t:"진주 생산 담당자",s:null,e:"2026-11-15",ref:1},
+    {co:"한국머크",t:"충북 음성 생산 담당자",s:null,e:"2026-11-16",ref:1},
+    {co:"SK바이오텍",t:"세종 물류·포장·출하 담당자",s:null,e:"2026-11-16",ref:1},
+    {co:"SK바이오텍",t:"추가 공고 (직무는 공고문 확인)",s:null,e:"2026-11-23",ref:1},
+    {co:"오비맥주",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-16",ref:1},
+    {co:"두산퓨얼셀",t:"군산 생산직 (계약 후 정규직 전환 검토)",s:null,e:"2026-11-19",ref:1},
+    {co:"농심",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-12-19",ref:1},
+    {co:"SK어드밴스드",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-22",ref:1},
+    {co:"대상",t:"이천·군산 공장 생산 공고",s:null,e:"2026-11-22",ref:1},
+    {co:"롯데GS화학",t:"여수 분석·생산 지원직 (1년 계약 후 정규직)",s:null,e:"2026-12-13",ref:1},
+    {co:"티디케이한국",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-23",ref:1},
+    {co:"CJ대한통운",t:"택배직 (여주·용인·화성·아산, 정규직)",s:null,e:"2026-11-25",ref:1},
+    {co:"앰코코리아",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-29",ref:1},
+    {co:"온세미컨덕터코리아",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-30",ref:1},
+    {co:"영풍석포제련소",t:"생산 공고 (직무는 공고문 확인)",s:null,e:"2026-11-30",ref:1},
+    {co:"한국무브넥스",t:"울산 생산·보전 (정규직)",s:null,e:"2026-11-22",ref:1},
+    {co:"아세아제지",t:"세종 생산직 (정규직)",s:null,e:"2026-11-20",ref:1},
+    {co:"서진산업",t:"전북 완주 검사직 (정규직)",s:null,e:"2026-11-20",ref:1},
+    {co:"SK에어플러스",t:"울산 생산직 (4조2교대)",s:null,e:"2026-11-20",ref:1},
+    {co:"앰코코리아",t:"광주 생산직 (4조2교대)",s:null,e:"2026-11-20",ref:1},
+    {co:"한국콜마",t:"세종 생산직 (2조2교대)",s:null,e:"2026-11-22",ref:1},
+    {co:"유피켐",t:"경기 평택 생산직",s:null,e:"2026-12-09",ref:1}
+  ];
+  var COLORS={
+    "SK하이닉스":["#D9480F","#FF9A62"],"기아":["#0B7285","#3BC9DB"],"현대자동차":["#1F6FEB","#5CA3FF"],
+    "삼성전자":["#5F3DC4","#A78BFA"],"삼성SDI":["#3B5BDB","#91A7FF"],"LG에너지솔루션":["#AE3EC9","#DA77F2"],
+    "포스코":["#2B8A3E","#69DB7C"],"현대제철":["#5C940D","#A9E34B"],"HD현대중공업":["#8C5A3C","#D2A27E"],
+    "S-OIL":["#C2255C","#F06595"],"SK에너지":["#B8860B","#F2C94C"],"롯데정밀화학":["#087F5B","#38D9A9"],
+    "금호석유화학":["#495057","#ADB5BD"],"현대로템":["#A61E4D","#E64980"],"현대위아":["#1971C2","#74C0FC"],
+    "현대트랜시스":["#D6336C","#F783AC"],"한화오션":["#364FC7","#748FFC"],"SK바이오사이언스":["#0F766E","#5EEAD4"],
+    "셀트리온":["#9F1239","#FB7185"]
+  };
+  ["동국제강","세아제강","한국타이어","한온시스템","코오롱인더스트리","삼성전기","LS일렉트릭","HD현대마린엔진","HD현대오씨아이","GS칼텍스","한화토탈에너지스","대한유화","롯데칠성음료","쿠쿠전자","한화글로벌","동서석유화학","STX엔진","무림페이퍼","한국머크","SK바이오텍","오비맥주","두산퓨얼셀","농심","SK어드밴스드","대상","롯데GS화학","티디케이한국","CJ대한통운","앰코코리아","온세미컨덕터코리아","영풍석포제련소","한국무브넥스","아세아제지","서진산업","이수화학","SK에어플러스","한국콜마","유피켐"].forEach(function(n,i){
+    var hu=Math.round((i*137.508+25)%360);
+    COLORS[n]=["hsl("+hu+" 62% 36%)","hsl("+hu+" 78% 68%)"];
+  });
+  function cs(co){var c=COLORS[co];return c?'--cl:'+c[0]+';--cd:'+c[1]+';':'';}
+  function cx(co){return COLORS[co]?' cc':'';}
+  var OPEN_INFO={
+    "SK하이닉스":{role:"전임직(생산직) 메인트·오퍼레이터",who:"학력 제한 폐지 (6월 발표)",flow:"서류 → SKCT(11월) → 면접(12월)",start:"2027년 2월부터 근무",place:"경기 이천·용인, 충북 청주 등",link:"https://www.skcareers.com",label:"SK Careers에서 지원"},
+    "기아":{role:"엔지니어(생산직) 설비기술인력",who:"고등학교 졸업 이상",flow:"서류·역량검사 → 면접(신체검사·기술지식테스트 포함)",start:"합격 후 오토랜드 배치",place:"오토랜드 광명·화성·광주",link:"https://career.kia.com",label:"기아 탤런트 라운지에서 지원"}
+  };
+  var CHAP={
+    "반도체·전자":["SK하이닉스","삼성전자","삼성전기","앰코코리아","온세미컨덕터코리아","티디케이한국"],
+    "자동차":["기아","현대자동차","현대위아","현대트랜시스","한국타이어","한온시스템","한국무브넥스","서진산업","SK에어플러스"],
+    "배터리":["삼성SDI","LG에너지솔루션"],
+    "철강·금속":["포스코","현대제철","동국제강","세아제강","영풍석포제련소"],
+    "정유·화학·소재":["S-OIL","SK에너지","GS칼텍스","롯데정밀화학","금호석유화학","한화토탈에너지스","HD현대오씨아이","대한유화","코오롱인더스트리","한화글로벌","동서석유화학","SK어드밴스드","롯데GS화학","무림페이퍼","아세아제지","이수화학","유피켐"],
+    "조선·기계·방산":["HD현대중공업","한화오션","현대로템","LS일렉트릭","HD현대마린엔진","STX엔진","두산퓨얼셀"],
+    "식품·바이오·물류":["한국콜마","SK바이오사이언스","셀트리온","롯데칠성음료","쿠쿠전자","SK바이오텍","한국머크","대상","농심","오비맥주","CJ대한통운"]
+  };
+  var CHAP_OF={};Object.keys(CHAP).forEach(function(k){CHAP[k].forEach(function(n){CHAP_OF[n]=k;});});
+  var REG={"SK하이닉스":["경기","충북"],"기아":["경기","광주"],"현대자동차":["울산","충남"],"삼성SDI":["경기","충남","울산"],"LG에너지솔루션":["충북"],"포스코":["경북","전남"],"현대제철":["충남","전남"],"HD현대중공업":["울산"],"S-OIL":["울산"],"SK에너지":["울산"],"롯데정밀화학":["울산"],"금호석유화학":["울산","전남"],"현대로템":["경남"],"현대위아":["경남","경기"],"현대트랜시스":["충남"],"한화오션":["경남"],"셀트리온":["인천"],"동국제강":["경북","인천","충남"],"세아제강":["경북"],"한국타이어":["대전"],"한온시스템":["대전"],"코오롱인더스트리":["경북"],"삼성전기":["경기","세종","부산"],"LS일렉트릭":["부산"],"HD현대마린엔진":["대구"],"HD현대오씨아이":["충남"],"GS칼텍스":["전남"],"한화토탈에너지스":["충남"],"대한유화":["울산"],"롯데칠성음료":["경기"],"쿠쿠전자":["경남"],"한화글로벌":["전남"],"동서석유화학":["울산"],"STX엔진":["경남"],"무림페이퍼":["경남"],"한국머크":["충북"],"SK바이오텍":["세종"],"대상":["경기","전북"],"영풍석포제련소":["경북"],"한국무브넥스":["울산"],"SK에어플러스":["울산"],"한국콜마":["세종"],"유피켐":["경기"],"아세아제지":["세종"],"서진산업":["전북"],"이수화학":["울산"],"두산퓨얼셀":["전북"],"롯데GS화학":["전남"],"CJ대한통운":["경기","충남"]};
+  var region="";
+  function regOk(co){return !region||(REG[co]||[]).indexOf(region)>=0;}
+  var activeCat="전체",query="";
+  function nameOk(co){return !query||co.toLowerCase().replace(/\s/g,"").indexOf(query)>=0;}
+  function visEv(){return EVENTS.filter(function(ev){return (activeCat==="전체"||CHAP_OF[ev.co]===activeCat)&&nameOk(ev.co)&&regOk(ev.co);});}
+  OPEN_INFO["쿠쿠전자"]={role:"4분기 생산직 사원",who:"학력 무관, 경력 무관",place:"경남 양산"};
+  var COMPANIES=[
+    {co:"SK하이닉스",cat:"반도체",recent:"11월 전임직(생산직) 메인트·오퍼레이터 11/10~11/17 15:00",who:"학력 제한 폐지",pattern:"올해 4월(4/13~22)과 11월 두 차례 모집",next:"",link:"https://www.skcareers.com"},
+    {co:"기아",cat:"자동차",recent:"설비기술인력 11/5~11/18 15:00, 앞서 8/10~8/21 엔지니어(생산직)",who:"고등학교 졸업 이상",pattern:"올해 8월과 11월 두 차례 모집",next:"",link:"https://career.kia.com"},
+    {co:"현대자동차",cat:"자동차",recent:"모빌리티 기술인력(자동차 생산) 6/15~6/24 17:00",who:"고등학교 졸업 이상, 연령·성별 제한 없음",pattern:"작년 6월 24~30일, 올해 6월 15~24일에 접수",next:"내년 6월 전후 (예상, 미확정)",extra:"합격자는 11~12월 중 생산공장에 배치 예정",link:"https://talent.hyundai.com"},
+    {co:"삼성전자",cat:"반도체",recent:"DS부문 하반기 5급 설비·인프라엔지니어직, 11/17 마감 공고가 올라와 있음(외부 정리 사이트 참고, 직무는 공고문 확인)",who:"고교 이상, 교대·라인근무 가능자",pattern:"그룹 하반기 공채는 9/8~9/15에 진행",next:"",check:true,link:"https://www.samsungcareers.com"},
+    {co:"삼성SDI",cat:"배터리",recent:"중대형사업부 5급 단기계약직 6월(기흥·천안·수원), 10월(울산) (접수일 미확인)",who:"고졸 이상",pattern:"사업부별 수시 모집",next:"",check:true,link:"https://www.samsungcareers.com"},
+    {co:"LG에너지솔루션",cat:"배터리",recent:"현장 계약직(청주) 9/20 마감, 10/7 마감",who:"고졸 이상",pattern:"수시 모집, 계약직으로 먼저 모집",next:"",link:"https://www.lgensol.com"},
+    {co:"포스코",cat:"철강",recent:"생산기술직 인턴 하반기 8/31~9/9, 상반기는 3/11 마감",who:"고졸 이상",pattern:"상반기·하반기 연 2회 인턴 모집",next:"2027년 3월 전후 (예상, 미확정)",extra:"근무지 포항·광양",link:"https://www.posco.co.kr"},
+    {co:"현대제철",cat:"철강",recent:"일반직 하반기 신입(생산관리·기계정비·전기정비·토건) 10/22~11/9",who:"공고문에서 학력 조건 확인 필요",pattern:"",next:"",extra:"근무지 당진·순천",check:true},
+    {co:"HD현대중공업",cat:"조선·화학",recent:"함정·중형선사업부 용연공장 생산기술직 기간제(경력) 11/1 마감",who:"학력 무관",pattern:"정규 생산직 공채 일정은 확인하지 못함",next:"",check:true,link:"https://recruit.hd.com"},
+    {co:"S-OIL",cat:"정유",recent:"생산직 신입사원 10/8~10/25 (연장 가능, 일부 보도는 10/21 마감)",who:"공고문에서 학력 조건 확인 필요",pattern:"올해 10월 접수",next:"",extra:"필기 11월, 면접 11~12월, 체력검정 내년 1월, 입사 내년 2월",link:"https://s-oil.recruiter.co.kr"},
+    {co:"SK에너지",cat:"정유",recent:"SK이노베이션 계열 울산CLX 기술직 인턴(생산·설비) 9/15~9/27",who:"학력 무관",pattern:"",next:"",link:"https://www.skcareers.com"},
+    {co:"롯데정밀화학",cat:"조선·화학",recent:"2026 기능직 신입(울산) 마감 (접수일 미확인)",who:"고졸 이상",pattern:"",next:"",check:true},
+    {co:"금호석유화학",cat:"조선·화학",recent:"2026 기술직 인턴(울산·여수) 마감 (접수일 미확인), 하반기 신입 8/31~9/11",who:"기술직 인턴 고졸 이상",pattern:"",next:"",check:true,link:"https://kkpc-recruit2026.com"},
+    {co:"현대로템",cat:"기계·방산",recent:"기술직(생산직) 신입 10/16~10/25",who:"고등학교 졸업 이상 (남성은 병역필 또는 면제)",pattern:"수시 채용, 지원서에서 근무지 선택",next:"",extra:"서류 → 온라인 인성검사 → 1차 면접·실기/필기 → 2차 면접·신체검사. 문의처는 창원공장 인사지원팀"},
+    {co:"현대위아",cat:"자동차",recent:"하반기 전문 기능인력(생산직) 신입 계약직, 10/6 10시 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"근무지 창원·평택"},
+    {co:"현대트랜시스",cat:"자동차",recent:"생산직 사원(기간제) 7/31~8/9, 앞서 6월·8월에도 단기 모집",who:"고등학교·전문대 졸업자",pattern:"기간제로 여러 차례 수시 모집, 계약은 최대 2년까지 연장 가능",next:"",extra:"근무지 충남 서산"},
+    {co:"한화오션",cat:"조선·화학",recent:"상반기 생산직 신입사원 4/30 마감, 하반기 신입 9/14~9/30은 직무 확인 못함",who:"고등학교 이상 이공계열 전공, 군필 또는 면제",pattern:"",next:"",check:true,extra:"특수선 업무는 신원조회 승인 필요",link:"https://hanwhaocean-1.career.greetinghr.com"},
+    {co:"SK바이오사이언스",cat:"바이오",recent:"하반기 신입 원액/완제생산(DS/DP) 10/8~10/21",who:"학력 조건은 공고문에서 확인 필요",pattern:"",next:"",check:true,extra:"서류 → SKCT → 면접 → 채용검진",link:"https://www.skcareers.com"},
+    {co:"셀트리온",cat:"바이오",recent:"2026 분야별 신입/경력 수시채용 마감 (접수일 미확인)",who:"고졸 이상으로 표기, 생산·생산관리 직무 포함",pattern:"수시 채용",next:"",check:true,extra:"근무지 인천 연수구"},
+    {co:"동국제강",cat:"철강",recent:"당진공장 생산직 용접 10/21 마감, 당진공장 천장크레인 8/26~9/3, 포항공장 8/2 마감, 인천공장 7/26 마감",who:"공고마다 다름 (학력 무관 또는 고졸 이상)",pattern:"공장별로 계약직·기간제를 수시로 모집",next:"",check:true,extra:"포항·인천·당진 공장"},
+    {co:"세아제강",cat:"철강",recent:"포항공장 현장전문직(생산·설비·출하) 신입 계약직 8/30 마감",who:"학력 무관",pattern:"공장 현장직을 계약직으로 모집",next:"",check:true},
+    {co:"한국타이어",cat:"자동차",recent:"상반기 한국공장 생산기능직 인턴(설비 보전) 3/27 마감",who:"고졸 이상, 기계·전기 관련 학력 또는 자격증, 교대근무 가능자",pattern:"",next:"",check:true,extra:"하반기 생산직 공고는 확인 못함"},
+    {co:"한온시스템",cat:"자동차",recent:"대전공장 생산·생산관리·품질 계약직, 11/16 마감 공고가 올라와 있음(외부 정리 사이트 참고)",who:"고졸 이상",pattern:"",next:"",check:true,extra:"근무지 대전 대덕구"},
+    {co:"코오롱인더스트리",cat:"조선·화학",recent:"제조부문 김천 생산관리원(계약직) 9/30 마감",who:"고졸 이상",pattern:"",next:"",check:true},
+    {co:"삼성전기",cat:"반도체·전자",recent:"세종·수원·부산 생산직(계약직) 11/17 마감, 앞서 5급 제조직 9/30 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"4조3교대(주야 교대) 근무. 직전 공고는 9/30 11시 마감. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"LS일렉트릭",cat:"기계·방산",recent:"부산사업장 제조(생산) 촉탁직 수시 채용 10/4 마감",who:"고졸 이상",pattern:"사업장별 수시 채용",next:"",check:true},
+    {co:"HD현대마린엔진",cat:"기계·방산",recent:"대구 생산계약직 10/11 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"조립·제조 직무"},
+    {co:"HD현대오씨아이",cat:"조선·화학",recent:"하반기 생산전문인턴(공정운전·설비/품질) 6/30~7/19",who:"고졸 이상, 교대근무 가능자",pattern:"인턴 후 전환",next:"",extra:"충남 서산, 4조2교대(12시간씩 2일 근무 2일 휴무)",link:"https://recruit.hd.com"},
+    {co:"GS칼텍스",cat:"정유",recent:"여수공장 생산기술직 인턴 1기(생산시설운전·계전정비·기계/시설정비)와 부두시설운전원 인턴 4/29 마감",who:"학력 무관, 병역필 또는 면제, 교대근무 가능자",pattern:"상반기에 생산기술직 인턴으로 모집",next:"",check:true,extra:"여수 거주 6개월 이상이면 우대. 하반기 신입 공고는 대졸 직무 위주",link:"https://recruit.gscaltex.com"},
+    {co:"한화토탈에너지스",cat:"조선·화학",recent:"2026년 1차 전문직 신입(생산·공정) 7/6~7/19, 출처에 따라 7/3~7/20으로도 표기",who:"전문학사 졸업(예정)자, 학점 3.5/4.5 이상, 교대근무 가능자",pattern:"인턴십 후 6개월 계약직으로 근무",next:"",check:true,extra:"충남 서산 대산"},
+    {co:"대한유화",cat:"조선·화학",recent:"2026년 생산직 인턴 및 경력사원 마감 (접수일 미확인)",who:"전문대 졸업 이상으로 표기",pattern:"",next:"",check:true,extra:"근무지 울산"},
+    {co:"롯데칠성음료",cat:"식품·생활",recent:"안성공장 생산 계약직 7/10~7/21 15시",who:"학력 무관, 병역필 또는 면제",pattern:"6개월 계약 후 평가에 따라 정규직(T직군) 전환 가능",next:"",extra:"교대근무"},
+    {co:"쿠쿠전자",cat:"식품·생활",recent:"4분기 생산직 사원 11/22 24시 마감",who:"학력 무관, 경력 무관",pattern:"분기별 생산직 모집",next:"",extra:"근무지 경남 양산"},
+    {co:"한화글로벌",cat:"정유·화학·소재",recent:"여수 생산 담당자 11/15 마감",who:"",pattern:"",next:"",check:true,extra:"고졸 이상, 근무지 전남 여수. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"동서석유화학",cat:"정유·화학·소재",recent:"울산 생산·공무 담당자 11/15 마감",who:"",pattern:"",next:"",check:true,extra:"초대졸 신입, 근무지 울산. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"SK어드밴스드",cat:"정유·화학·소재",recent:"생산 공고 11/22 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"롯데GS화학",cat:"정유·화학·소재",recent:"전남 여수 분석·생산 지원직 12/13 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"1년 계약직으로 시작해 정규직으로 전환하는 방식이고 4조2교대예요. 외부 정리 사이트 달력에는 11/23로 표시돼 있어 날짜가 다를 수 있어요. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"무림페이퍼",cat:"정유·화학·소재",recent:"진주 생산 담당자 11/15 마감",who:"",pattern:"",next:"",check:true,extra:"초대졸 이하 신입, 근무지 경남 진주. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"영풍석포제련소",cat:"철강·금속",recent:"생산 공고 11/30 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"STX엔진",cat:"조선·기계·방산",recent:"창원 생산·품질·물류·공무 담당자 11/15 마감",who:"",pattern:"",next:"",check:true,extra:"초대졸 신입, 근무지 경남 창원. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"두산퓨얼셀",cat:"조선·기계·방산",recent:"전북 군산 생산직 11/19 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"계약직으로 먼저 뽑고 종료 후 정규직 전환을 검토하는 방식이에요. 상시 주간·2교대·3조2교대 근무. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"앰코코리아",cat:"반도체·전자",recent:"생산 공고 11/29 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"온세미컨덕터코리아",cat:"반도체·전자",recent:"생산 공고 11/30 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"티디케이한국",cat:"반도체·전자",recent:"생산 공고 11/23 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"SK바이오텍",cat:"식품·바이오·물류",recent:"세종 물류·포장·출하 담당자 11/16 마감, 11/23 마감 공고도 있음",who:"",pattern:"",next:"",check:true,extra:"고졸 이상 신입, 근무지 세종. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"한국머크",cat:"식품·바이오·물류",recent:"충북 음성 생산 담당자 11/16 마감",who:"",pattern:"",next:"",check:true,extra:"고졸 이상 신입, 외국계 기업, 근무지 충북 음성. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"대상",cat:"식품·바이오·물류",recent:"이천·군산 공장 생산 공고 11/22 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"농심",cat:"식품·바이오·물류",recent:"생산 공고 12/19 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"오비맥주",cat:"식품·바이오·물류",recent:"생산 공고 11/16 마감",who:"",pattern:"",next:"",check:true,extra:"접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"CJ대한통운",cat:"식품·바이오·물류",recent:"경기 여주·용인·화성, 충남 아산 택배직(정규직) 11/25 마감",who:"고졸 이상, 1종 보통 면허",pattern:"",next:"",check:true,extra:"화물운송 자격증이 있으면 유리해요. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"한국무브넥스",cat:"자동차",recent:"울산 생산·보전(정규직) 11/22 마감",who:"초대졸 이하",pattern:"",next:"",check:true,extra:"주간 2교대. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"아세아제지",cat:"정유·화학·소재",recent:"세종 생산직(정규직) 11/20 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"4조3교대. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"서진산업",cat:"자동차",recent:"전북 완주 검사직(정규직) 11/20 마감",who:"고졸 이상, 시력 1.0 이상",pattern:"",next:"",check:true,extra:"주간 2교대. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"이수화학",cat:"정유·화학·소재",recent:"온산 NP생산 (접수 시작·마감일 미확인, 상시 채용으로 정리됨)",who:"",pattern:"",next:"",check:true,extra:"근무지 울산 온산. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"SK에어플러스",cat:"자동차",recent:"울산 생산직 11/20 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"4조2교대. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"한국콜마",cat:"식품·바이오·물류",recent:"세종 생산직 11/22 마감",who:"초대졸 이하",pattern:"",next:"",check:true,extra:"2조2교대. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."},
+    {co:"유피켐",cat:"정유·화학·소재",recent:"경기 평택 생산직 12/09 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"주간 근무 공고로 정리돼 있어요. 접수 마감일은 공개된 채용 정보를 바탕으로 정리했어요. 직무·자격은 지원 전에 공식 공고에서 꼭 확인하세요."}
+  ];
+  COMPANIES.forEach(function(c){c.cat=CHAP_OF[c.co]||c.cat;});
+  var NODATA="현대모비스, 두산에너빌리티, HD현대오일뱅크, HL만도, 한국항공우주, CJ제일제당, 오리온, 삼성바이오로직스는 이번에 고졸 지원이 가능한 생산직 공고를 찾지 못했고 하반기 대졸 신입 공고 위주였어요. 한화에어로스페이스 항공사업부 전문직(11/6~11/19)은 공고에 대졸 이상으로 표기돼 있었어요. 금호타이어, 넥센타이어, 한화솔루션, E1은 아직 확인하지 못했어요. 다른 정리 자료에 있던 파미셀 케미칼, 솔머티리얼즈, 서진산업, 아세아제지 등 작은 회사는 이름이 덜 알려져 이번엔 뺐어요.";
+
+  /* ---------- helpers ---------- */
+  function todayKST(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Seoul"}).format(new Date());}
+  var TODAY=todayKST();
+  function utc(s){var p=s.split("-");return Date.UTC(+p[0],+p[1]-1,+p[2]);}
+  function diffDays(a,b){return Math.round((utc(a)-utc(b))/86400000);}
+  function fmt(s){var p=s.split("-");return +p[1]+"/"+(+p[2]);}
+  function pad(n){return n<10?"0"+n:""+n;}
+  function isOpen(ev){if(ev.live)return TODAY<=ev.e;return (ev.s?ev.s<=TODAY:true)&&TODAY<=ev.e&&(ev.s?true:false);}
+  function esc(t){return String(t).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+  function el(html){var d=document.createElement("div");d.innerHTML=html;return d.firstElementChild;}
+
+  /* ---------- open now ---------- */
+  var openEvents=EVENTS.filter(isOpen).sort(function(a,b){return a.e<b.e?-1:1;});
+  document.getElementById("open-count").textContent=openEvents.length+"건";
+  var og=document.getElementById("open-grid");
+  if(!openEvents.length){
+    og.appendChild(el('<div class="empty">오늘 기준으로 확인된 접수 중인 공고가 없어요. 아래 회사별 정리에서 다음 예상 시기를 확인하세요.</div>'));
+  }
+  openEvents.forEach(function(ev){
+    var info=OPEN_INFO[ev.co]||{};
+    var left=diffDays(ev.e,TODAY);
+    var dd=left===0?"오늘 마감":"D-"+left;
+    var html='<article class="open-card'+cx(ev.co)+'" data-co="'+esc(ev.co)+'" tabindex="0" role="button" style="'+cs(ev.co)+'"><div class="top"><div><div class="co">'+esc(ev.co)+'</div><div class="role">'+esc(info.role||ev.t)+'</div></div><span class="dday">'+dd+'</span></div>'+
+      '<dl><dt>접수</dt><dd class="num">'+(ev.s?fmt(ev.s)+' ~ ':'~ ')+fmt(ev.e)+(ev.et?' '+ev.et:'')+(ev.s?'':' (접수 시작일은 확인 못함)')+'</dd>'+
+      (info.who?'<dt>자격</dt><dd>'+esc(info.who)+'</dd>':'')+
+      (info.flow?'<dt>전형</dt><dd>'+esc(info.flow)+'</dd>':'')+
+      (info.place?'<dt>근무지</dt><dd>'+esc(info.place)+'</dd>':'')+
+      (info.start?'<dt>입사</dt><dd>'+esc(info.start)+'</dd>':'')+'</dl>'+
+      (info.link?'<a class="btn" href="'+info.link+'" target="_blank" rel="noopener noreferrer">'+esc(info.label||"공식 채용 페이지")+'</a>':'')+'</article>';
+    og.appendChild(el(html));
+  });
+
+  /* ---------- calendar ---------- */
+  var MIN="2026-03",MAX="2026-12";
+  var cur=TODAY.slice(0,7);
+  if(cur<MIN)cur=MIN; if(cur>MAX)cur=MAX;
+  var gridEl=document.getElementById("grid"),title=document.getElementById("cal-title"),dl=document.getElementById("daylist");
+  var DOW=["일","월","화","수","목","금","토"];
+  function addDays(k,n){var t=new Date(utc(k)+n*86400000);return t.getUTCFullYear()+"-"+pad(t.getUTCMonth()+1)+"-"+pad(t.getUTCDate());}
+  function render(){
+    var y=+cur.slice(0,4),m=+cur.slice(5,7);
+    title.textContent=y+"년 "+m+"월";
+    document.getElementById("prev").disabled=(cur<=MIN);
+    document.getElementById("next").disabled=(cur>=MAX);
+    var first=new Date(Date.UTC(y,m-1,1)).getUTCDay();
+    var dim=new Date(Date.UTC(y,m,0)).getUTCDate();
+    var nWeeks=Math.ceil((first+dim)/7);
+    var gridStart=addDays(cur+"-01",-first);
+    var html='<div class="dowrow">'+DOW.map(function(d){return '<div class="dow">'+d+'</div>';}).join("")+'</div><div class="weeks">';
+    for(var w=0;w<nWeeks;w++){
+      var wk0=addDays(gridStart,w*7),wk6=addDays(wk0,6),segs=[];
+      visEv().forEach(function(ev){
+        var s=ev.s||ev.e;
+        if(ev.e<wk0||s>wk6)return;
+        segs.push({ev:ev,a:s<wk0?0:diffDays(s,wk0),b:ev.e>wk6?6:diffDays(ev.e,wk0),cl:s<wk0,cr:ev.e>wk6});
+      });
+      segs.sort(function(p,q){return p.a-q.a||(q.b-q.a)-(p.b-p.a);});
+      var ends=[];
+      segs.forEach(function(sg){var l=0;while(ends[l]!==undefined&&ends[l]>=sg.a)l++;ends[l]=sg.b;sg.l=l;});
+      var nl=Math.max(ends.length,1);
+      html+='<div class="week" style="grid-template-rows:24px repeat('+nl+',24px)">';
+      for(var i=0;i<7;i++){
+        var key=addDays(wk0,i),out=key.slice(0,7)!==cur;
+        html+='<div class="cell'+(out?' out':'')+(key===TODAY?' today':'')+'" style="grid-column:'+(i+1)+';grid-row:1 / span '+(nl+1)+'"><span class="n num">'+(+key.slice(8))+'</span></div>';
+      }
+      segs.forEach(function(sg){
+        var ev=sg.ev,wide=(sg.b-sg.a)>=2;
+        var label=ev.co+(ev.s?'':' 마감')+(wide?' · '+ev.t:'');
+        var tip=ev.co+' '+ev.t+' ('+(ev.s?fmt(ev.s)+' ~ ':'마감 ')+fmt(ev.e)+')';
+        html+='<div class="bar'+cx(ev.co)+(isOpen(ev)?' live':'')+(sg.cl?' cl':'')+(sg.cr?' cr':'')+'" style="'+cs(ev.co)+'grid-column:'+(sg.a+1)+' / '+(sg.b+2)+';grid-row:'+(sg.l+2)+'" title="'+esc(tip)+'">'+esc(label)+'</div>';
+      });
+      html+='</div>';
+    }
+    gridEl.innerHTML=html+'</div>';
+    var m0=cur+"-01",m1=cur+"-"+pad(dim);
+    var evs=visEv().filter(function(ev){return (ev.s||ev.e)<=m1&&ev.e>=m0;}).sort(function(p,q){return (p.s||p.e)<(q.s||q.e)?-1:1;});
+    dl.innerHTML=evs.length?evs.map(function(ev){
+      var live=isOpen(ev);
+      var span=ev.s?(fmt(ev.s)+' ~ '+fmt(ev.e)):('마감 '+fmt(ev.e));
+      return '<div class="row"><span class="tag'+(live?' live':'')+'">'+(live?'접수 중':'마감')+'</span><b>'+esc(ev.co)+'</b><span>'+esc(ev.t)+'</span><span class="num" style="color:var(--muted)">'+span+(ev.et?' '+ev.et:'')+'</span></div>';
+    }).join(""):'<div style="color:var(--muted)">이 달에 확인된 접수 공고는 없어요.</div>';
+  }
+  function shift(n){
+    var y=+cur.slice(0,4),m=+cur.slice(5,7)+n;
+    if(m<1){m=12;y--;} if(m>12){m=1;y++;}
+    var nx=y+"-"+pad(m);
+    if(nx<MIN||nx>MAX)return;
+    cur=nx; render();
+  }
+  document.getElementById("prev").addEventListener("click",function(){shift(-1);});
+  document.getElementById("next").addEventListener("click",function(){shift(1);});
+  render();
+
+  /* ---------- timeline ---------- */
+  var T0="2026-03-01",T1="2026-12-31",TOT=diffDays(T1,T0)+1;
+  function pct(k){return diffDays(k,T0)/TOT*100;}
+  function renderTL(){
+    var cos=[],last={};
+    visEv().forEach(function(ev){if(cos.indexOf(ev.co)<0)cos.push(ev.co);if(!last[ev.co]||ev.e>last[ev.co])last[ev.co]=ev.e;});
+    var liveCo={};visEv().forEach(function(ev){if(isOpen(ev))liveCo[ev.co]=true;});
+    cos.sort(function(a,b){return (liveCo[b]?1:0)-(liveCo[a]?1:0)||(last[b]<last[a]?-1:1);});
+    var months="",lines="";
+    for(var mm=3;mm<=12;mm++){
+      var k="2026-"+pad(mm)+"-01";
+      months+='<div class="mlab" style="left:'+pct(k)+'%">'+mm+'월</div>';
+      lines+='<div class="mline" style="left:'+pct(k)+'%"></div>';
+    }
+    var tl=(TODAY>=T0&&TODAY<=T1)?'<div class="tline" style="left:'+pct(TODAY)+'%"></div>':"";
+    if(!cos.length){document.getElementById("tlhost").innerHTML='<div class="empty">조건에 맞는 접수 공고가 아직 없어요. 아래 회사별 정리에서 다음 예상 시기를 확인하세요.</div>';return;}
+    var h='<div class="tl"><div class="tlhead"><div class="tlname"></div><div class="tltrack">'+lines+months+tl+'</div></div>';
+    cos.forEach(function(co){
+      var items="",idx=0;
+      visEv().filter(function(ev){return ev.co===co;}).sort(function(a,b){return (a.s||a.e)<(b.s||b.e)?-1:1;}).forEach(function(ev){
+        var live=isOpen(ev),pos=idx%2===0?"up":"dn";idx++;
+        var tip=esc(ev.t+" ("+(ev.s?fmt(ev.s)+" ~ ":"마감 ")+fmt(ev.e)+")");
+        if(ev.s){
+          var x=pct(ev.s),w=(diffDays(ev.e,ev.s)+1)/TOT*100;
+          items+='<div class="tbar'+cx(co)+(live?' live':'')+'" style="'+cs(co)+'left:'+x+'%;width:'+w+'%" title="'+tip+'"></div>'+
+                 '<span class="tlab '+pos+(live?' live':'')+'" style="left:'+x+'%">'+fmt(ev.s)+'~'+fmt(ev.e)+'</span>';
+        }else{
+          var x2=pct(ev.e)+0.15;
+          items+='<div class="tdot'+cx(co)+(live?' live':'')+'" style="'+cs(co)+'left:'+x2+'%" title="'+tip+'"></div>'+
+                 '<span class="tlab '+pos+(live?' live':'')+'" style="left:calc('+x2+'% - 6px)">'+fmt(ev.e)+' 마감</span>';
+        }
+      });
+      h+='<div class="tlrow'+cx(co)+(liveCo[co]?' isopen':'')+'" style="'+cs(co)+'"><div class="tlname" data-co="'+esc(co)+'" tabindex="0" role="button">'+esc(co)+'</div><div class="tltrack">'+lines+tl+items+'</div></div>';
+    });
+    h+='</div>';
+    var host=document.getElementById("tlhost");
+    host.innerHTML=h;
+    var wrap=host.parentElement.querySelector(".tlwrap")||host;
+    var tlEl=host.querySelector(".tl");
+    var off=108+(pct(TODAY)/100)*(tlEl.scrollWidth-108);
+    host.scrollLeft=Math.max(0,off-host.clientWidth/2);
+  }
+  renderTL();
+  var tabTL=document.getElementById("tab-tl"),tabMC=document.getElementById("tab-mc");
+  var tabLS=document.getElementById("tab-ls");
+  function setTab(which){
+    var tl=which==="tl";
+    document.getElementById("tl").hidden=!tl;
+    document.getElementById("mc").hidden=which!=="mc";
+    document.getElementById("ls").hidden=which!=="ls";
+    tabTL.setAttribute("aria-pressed",tl);tabMC.setAttribute("aria-pressed",which==="mc");tabLS.setAttribute("aria-pressed",which==="ls");
+    if(tl){var host=document.getElementById("tlhost");var tlEl=host.querySelector(".tl");host.scrollLeft=Math.max(0,108+(pct(TODAY)/100)*(tlEl.scrollWidth-108)-host.clientWidth/2);}
+  }
+  tabTL.addEventListener("click",function(){setTab("tl");});
+  tabMC.addEventListener("click",function(){setTab("mc");});
+  tabLS.addEventListener("click",function(){setTab("ls");});
+  setTab("mc");
+
+  /* ---------- ledger ---------- */
+  var openCos={}; openEvents.forEach(function(e){openCos[e.co]=true;});
+  var cats=["전체"].concat(Object.keys(CHAP));
+  var fbs=[document.getElementById("chapters"),document.getElementById("filters")],lg=document.getElementById("ledger");
+  var lsStatus="all";
+  function ddays(ev){return diffDays(ev.e,TODAY);}
+  function stOf(ev){return ev.e<TODAY?"past":(ddays(ev)<=7?"soon":"open");}
+  function renderList(){
+    var all=visEv();
+    var cnt={all:all.length,open:0,soon:0,past:0};
+    all.forEach(function(ev){var s=stOf(ev);if(s==="past")cnt.past++;else{cnt.open++;if(s==="soon")cnt.soon++;}});
+    var labels=[["all","전체"],["open","접수 중·예정"],["soon","마감 임박"],["past","지난 공고"]];
+    var lsf=document.getElementById("lsf");lsf.innerHTML="";
+    labels.forEach(function(l){
+      var n=l[0]==="all"?cnt.all:cnt[l[0]];
+      var b=el('<button type="button" class="chip" aria-pressed="'+(lsStatus===l[0])+'">'+l[1]+' <span class="num">'+n+'</span></button>');
+      b.addEventListener("click",function(){lsStatus=l[0];renderList();});
+      lsf.appendChild(b);
+    });
+    var list=all.filter(function(ev){var s=stOf(ev);return lsStatus==="all"||(lsStatus==="open"&&s!=="past")||(lsStatus===s);});
+    list.sort(function(a,b){
+      var pa=a.e<TODAY,pb=b.e<TODAY;
+      if(pa!==pb)return pa?1:-1;
+      return pa?(a.e<b.e?1:-1):(a.e<b.e?-1:1);
+    });
+    var host=document.getElementById("lslist");
+    if(!list.length){host.innerHTML='<div class="empty">조건에 맞는 공고가 없어요.</div>';return;}
+    host.innerHTML=list.map(function(ev){
+      var s=stOf(ev),left=ddays(ev);
+      var info=COMPANIES.filter(function(c){return c.co===ev.co;})[0]||{};
+      var meta=[(REG[ev.co]||[]).join("·"),info.who].filter(Boolean).join(" · ");
+      var tag=s==="past"?'<span class="tag">마감</span>':(s==="soon"?'<span class="tag live">마감 임박</span>':'<span class="tag live">접수 중</span>');
+      var range=(ev.s?fmt(ev.s)+' ~ ':'마감 ')+fmt(ev.e)+(ev.et?' '+ev.et:'');
+      var dd=s==="past"?'<b>마감</b>':'<b>'+(left===0?"오늘":"D-"+left)+'</b>';
+      return '<div class="lsi'+cx(ev.co)+(s==="past"?' past':' live')+'" data-co="'+esc(ev.co)+'" tabindex="0" role="button" style="'+cs(ev.co)+'">'+
+        '<div>'+tag+'</div><div><span class="co">'+esc(ev.co)+'</span></div><div class="d">'+dd+range+'</div>'+
+        '<div class="t">'+esc(ev.t)+'</div>'+(meta?'<div class="meta">'+esc(meta)+'</div>':'')+'</div>';
+    }).join("");
+  }
+  function drawStats(){
+    var all=EVENTS,op=all.filter(function(e){return e.e>=TODAY&&(isOpen(e)||(e.s&&e.s>TODAY));}).length;
+    var soon=all.filter(function(e){return isOpen(e)&&ddays(e)<=7;}).length;
+    document.getElementById("stats").innerHTML=
+      '<div class="stat"><b>'+COMPANIES.length+'</b><span>등록 회사</span></div>'+
+      '<div class="stat hot"><b>'+openEvents.length+'</b><span>지금 접수 중</span></div>'+
+      '<div class="stat"><b>'+soon+'</b><span>7일 안에 마감</span></div>'+
+      '<div class="stat"><b>'+EVENTS.length+'</b><span>올해 확인한 공고</span></div>';
+  }
+  function setCat(c){activeCat=c;refresh();}
+  function refresh(){drawFilters();drawLedger();render();renderTL();renderList();}
+  function drawFilters(){
+    fbs.forEach(function(fb){
+      fb.innerHTML="";
+      cats.forEach(function(c){
+        var n=c==="전체"?COMPANIES.length:COMPANIES.filter(function(x){return x.cat===c;}).length;
+        var b=el('<button type="button" class="chip" aria-pressed="'+(c===activeCat)+'">'+esc(c)+' <span class="num">'+n+'</span></button>');
+        b.addEventListener("click",function(){setCat(c);});
+        fb.appendChild(b);
+      });
+    });
+  }
+  function drawLedger(){
+    lg.innerHTML="";
+    var list=COMPANIES.filter(function(c){return (activeCat==="전체"||c.cat===activeCat)&&nameOk(c.co)&&regOk(c.co);}).sort(function(a,b){
+      return (openCos[b.co]?1:0)-(openCos[a.co]?1:0);
+    });
+    document.getElementById("co-count").textContent=list.length+"곳";
+    list.forEach(function(c){
+      var live=!!openCos[c.co];
+      var st=live?'<span class="status live">접수 중</span>':(c.check?'<span class="status check">접수일 확인 필요</span>':'<span class="status">지금은 접수 안 함</span>');
+      var h='<article class="co-card'+cx(c.co)+'" data-co="'+esc(c.co)+'" tabindex="0" role="button" style="'+cs(c.co)+'"><header><h3>'+esc(c.co)+'</h3>'+st+'</header><div class="cat">'+esc(c.cat)+'</div><dl>'+
+        '<dt>최근 공고</dt><dd>'+esc(c.recent)+'</dd>'+
+        (c.who?'<dt>자격</dt><dd>'+esc(c.who)+'</dd>':'')+
+        (c.pattern?'<dt>접수 패턴</dt><dd>'+esc(c.pattern)+'</dd>':'')+
+        (c.next?'<dt>다음 시기</dt><dd class="est">'+esc(c.next)+'</dd>':'')+
+        (c.extra?'<dt>참고</dt><dd>'+esc(c.extra)+'</dd>':'')+'</dl>'+
+        (c.link?'<a class="link" href="'+c.link+'" target="_blank" rel="noopener noreferrer">공식 채용 페이지</a>':'')+'</article>';
+      lg.appendChild(el(h));
+    });
+  }
+  document.getElementById("q").addEventListener("input",function(e){query=e.target.value.toLowerCase().replace(/\s/g,"");drawLedger();render();renderTL();renderList();});
+  var rgSel=document.getElementById("rg");
+  ["서울","경기","인천","대전","세종","충북","충남","광주","전남","전북","대구","경북","부산","울산","경남"].forEach(function(r){
+    if(Object.keys(REG).some(function(k){return REG[k].indexOf(r)>=0;}))rgSel.appendChild(new Option(r,r));
+  });
+  rgSel.addEventListener("change",function(){region=rgSel.value;drawLedger();render();renderTL();renderList();});
+
+  var DETAIL={
+    "현대자동차":{pay:"추정 · 계약연봉 5,000만원대 초중반, 성과급 포함 시 훨씬 높음",est:1},
+    "삼성전자":{pay:"추정 · 성과급 포함 약 6,000만원 안팎 (초봉 기준)",est:1},
+    "삼성SDI":{pay:"추정 · 약 6,000만원 안팎 (초봉 기준, 성과급 변동 큼)",est:1},
+    "LG에너지솔루션":{pay:"추정 · 약 4,000~6,000만원 (배터리 업황에 따라 성과급 변동)",est:1},
+    "포스코":{pay:"추정 · 약 4,600~5,000만원 (초봉 기준, 이후 크게 오름)",est:1},
+    "현대제철":{pay:"추정 · 약 5,000만원대",est:1},
+    "HD현대중공업":{pay:"추정 · 약 4,400~4,800만원 (초봉 기준, 조선 호황으로 성과급 증가)",est:1},
+    "S-OIL":{pay:"추정 · 약 6,000~8,000만원대 (정유사, 성과급 변동 큼)",est:1},
+    "SK에너지":{pay:"추정 · 약 6,000~8,000만원대 (정유사, 성과급 변동 큼)",est:1},
+    "GS칼텍스":{pay:"추정 · 약 6,000~8,000만원대 (정유사, 성과급 변동 큼)",est:1},
+    "한화토탈에너지스":{pay:"추정 · 약 6,000~7,000만원대",est:1},
+    "롯데정밀화학":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "금호석유화학":{pay:"추정 · 약 5,000~7,000만원대",est:1},
+    "현대로템":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "현대위아":{pay:"추정 · 약 5,000만원대",est:1},
+    "현대트랜시스":{pay:"추정 · 약 5,000만원대",est:1},
+    "한화오션":{pay:"추정 · 약 5,000~6,000만원대 (조선 호황으로 상승)",est:1},
+    "SK바이오사이언스":{pay:"추정 · 약 6,500만원 안팎 (초봉 기준)",est:1},
+    "셀트리온":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "동국제강":{pay:"추정 · 약 5,000만원대",est:1},
+    "세아제강":{pay:"추정 · 약 5,000만원대",est:1},
+    "한국타이어":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "한온시스템":{pay:"추정 · 약 5,000만원대",est:1},
+    "코오롱인더스트리":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "LS일렉트릭":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "HD현대마린엔진":{pay:"추정 · 약 5,000만원대",est:1},
+    "HD현대오씨아이":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "롯데칠성음료":{pay:"추정 · 약 5,000만원대",est:1},
+    "쿠쿠전자":{pay:"추정 · 약 4,000~5,000만원대",est:1},
+    "한화글로벌":{pay:"추정 · 약 5,000만원대",est:1},
+    "동서석유화학":{pay:"추정 · 약 5,000만원대",est:1},
+    "SK어드밴스드":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "무림페이퍼":{pay:"추정 · 약 5,000만원대",est:1},
+    "영풍석포제련소":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "온세미컨덕터코리아":{pay:"추정 · 약 5,000만원대",est:1},
+    "티디케이한국":{pay:"추정 · 약 4,500~5,500만원대",est:1},
+    "SK바이오텍":{pay:"추정 · 약 6,000만원 안팎 (초봉 기준)",est:1},
+    "한국머크":{pay:"추정 · 약 5,000~6,000만원대",est:1},
+    "농심":{pay:"추정 · 약 4,500~5,500만원대",est:1},
+    "오비맥주":{pay:"추정 · 약 6,500만원 안팎 (초봉 기준)",est:1},
+    "SK하이닉스":{pay:"메인트 오퍼레이터 신입 1~2년 차도 2025년 성과급 포함 연 1억원 이상 (정리 글 기준)"},
+    "기아":{pay:"오토랜드 광명 산학인턴 풀근무 기준 월 세후 약 400만원 (인턴 기준, 정규 입사 후 연봉은 다름)"},
+    "삼성전기":{pay:"월 세후 350~400만원 (계약직)",loc:"세종 · 수원 · 부산",job:"생산직",type:"계약직 (정규직 전환 아님)",qual:"고졸 이상 · 40대 여성도 지원 가능",shift:"수원 주간 또는 4조3교대 · 세종 4조3교대 · 부산 4조3교대",note:"여성 기숙사 가능 (남자는 포항·타 지역 이야기가 있어요). 직전 정리 글에서는 정규직 전환이 안 된다고 안내했어요."},
+    "이수화학":{pay:"약 8,000만원 (3~5년 차, 2025년 원천징수 기준) · 기본급 월 230~250만원 · 상여 850%",loc:"울산 온산",job:"NP 생산",type:"정규직",qual:"3~5년 차 기준 정리 (신입 기준은 공고 확인)",shift:"교대 근무",note:"위험물산업기사 보유 시 우대한다고 정리돼 있어요."},
+    "아세아제지":{pay:"신입 5,000~5,500만원 · 기본급 월 210~220만원 · 상여 600% · 성과급 200~300만원",loc:"세종",job:"생산직",type:"정규직",qual:"고졸 이상",shift:"4조3교대",note:"출퇴근 버스는 청주·세종 방면으로 다닌다고 정리돼 있어요. 기숙사는 있지만 이용자가 많지 않다는 글이 있어요."},
+    "서진산업":{pay:"신입 약 7,000만원 · 5~7년 차 약 8,000만원 이상 · 기본급 월 220~240만원 · 상여 700%",loc:"전북 완주",job:"검사직",type:"정규직",qual:"고졸 이상 · 시력 1.0 이상",shift:"주간 2교대",note:"기숙사는 없다고 정리돼 있어요."},
+    "CJ대한통운":{pay:"추정 · 약 4,500~5,500만원대 (택배직)",est:1,loc:"경기 여주·용인·화성 / 충남 아산",job:"택배직",type:"정규직",qual:"고졸 이상 · 1종 보통 면허 · 화물운송종사자격증 보유자",shift:"주간 2교대",note:""},
+    "STX엔진":{pay:"주 52시간 기준 5,000만원대 초중반 · 기본급 월 160만원 · 상여 800%",loc:"경남 창원",job:"현장 신입·경력 채용",type:"정규직",qual:"초대졸",shift:"주간",note:"기숙사 있음 (1인 1실 정리)."},
+    "한국무브넥스":{pay:"3~5년 차 8,500~9,000만원 · 기본급 월 180~190만원 · 상여 750%",loc:"울산",job:"생산·보전",type:"정규직",qual:"초대졸 이하",shift:"주간 2교대",note:""},
+    "두산퓨얼셀":{pay:"주간 2교대 6년 차 약 7,000만원 · 3조2교대 신입 1년 차 6,000~7,000만원 · 상여 700%",loc:"전북 군산",job:"생산직",type:"계약직 후 정규직 전환 검토",qual:"고졸 이상",shift:"상시 주간 · 2교대 · 3조2교대",note:"계약 종료 후 정규직 전환을 검토하는 방식이에요."},
+    "롯데GS화학":{pay:"4,500~5,000만원 · 기본급 월 약 240만원 · 상여 300%",loc:"전남 여수",job:"분석·생산 지원직",type:"계약직 (정규직 전환 이야기가 많음)",qual:"고졸 이상",shift:"4조2교대",note:"자료마다 12/13과 11/23로 날짜가 달라요. 공식 공고에서 확인하세요."},
+    "한국콜마":{pay:"약 6,000만원 · 기본급 월 약 257만원 · 상여 200%",loc:"세종",job:"생산직",type:"정규직",qual:"초대졸 이하",shift:"2조2교대",note:""},
+    "대상":{pay:"신입 5,000~5,500만원 · 4조3교대 6,000만원 이상 · 5년 차 7,000~8,000만원 · 상여 900%",loc:"군산 · 이천",job:"생산직",type:"정규직",qual:"고졸 이상",shift:"4조3교대 · 2교대 (사업장별)",note:""},
+    "SK에어플러스":{pay:"3~5년 차 7,000~8,000만원 · 상여 700%",loc:"울산",job:"생산·운전(오퍼레이터)",type:"정규직",qual:"공고 확인",shift:"4조2교대",note:""},
+    "앰코코리아":{pay:"4,500~5,000만원 · 상여 700%",loc:"광주 · 이전 공고 기준",job:"생산직",type:"정규직",qual:"공고 확인",shift:"4조2교대",note:""},
+    "유피켐":{pay:"5,000만원 이상",loc:"경기 평택",job:"현장 생산직",type:"공고 확인",qual:"고졸 이상",shift:"주간",note:""},
+    "대한유화":{pay:"교대조에 따라 6,000~7,000만원대",loc:"울산",job:"설비 · 생산",type:"정규직",qual:"초대졸 이하",shift:"4조2교대",note:""}
+  };
+  var dtEl=document.createElement("dialog");dtEl.id="dt";dtEl.setAttribute("aria-label","회사 상세");document.body.appendChild(dtEl);
+  var rows;
+  function payRow(v){
+    if(!v){rows.push('<dt>연봉</dt><dd>아직 확인하지 못했어요</dd>');return;}
+    var s=esc(v.replace(/\s*\([^)]*\)/g,""));
+    s=s.replace(/(?<![\d,~])(?<!기본급\s)(?<!기본급\s월\s)((?:약\s*)?(?:월\s*)?(?:세후\s*)?(?:신입\s*)?[\d,]+(?:~[\d,]+)?(?:만원|억원)(?:\s*(?:이상|안팎|대|초중반))?)/g,'<b class="pay">$1</b>');
+    rows.push('<dt>연봉</dt><dd>'+s+'</dd>');
+  }
+  function showDetail(co){
+    var c=COMPANIES.filter(function(x){return x.co===co;})[0]||{co:co};
+    var d=DETAIL[co]||{};
+    var evs=EVENTS.filter(function(e){return e.co===co;}).sort(function(a,b){return a.e<b.e?-1:1;});
+    rows=[];
+    function add(k,v){if(v)rows.push('<dt>'+k+'</dt><dd>'+esc(v)+'</dd>');}
+    add("근무지",d.loc||(REG[co]||[]).join("·"));add("직무",d.job);add("고용형태",d.type);
+    add("지원 자격",d.qual||c.who);add("근무형태",d.shift);
+    payRow(d.pay);add("최근 공고",c.recent);if(c.pattern)add("접수 패턴",c.pattern);
+    var sch=evs.map(function(e){return '<li>'+(e.s?fmt(e.s)+' ~ ':'마감 ')+fmt(e.e)+(e.et?' '+esc(e.et):'')+' · '+esc(e.t)+(e.e<TODAY?' (마감)':'')+'</li>';}).join("");
+    var notes=[d.note,c.extra].filter(Boolean).join(" ");
+    dtEl.style.cssText=cs(co);dtEl.className=cx(co).trim();
+    dtEl.innerHTML='<div class="dh"><h3>'+esc(co)+'</h3><button type="button" aria-label="닫기">✕</button></div><div class="db"><dl>'+rows.join("")+'</dl>'+
+      (sch?'<ul class="sch">'+sch+'</ul>':'')+(d.pay?'<div class="nt">'+(d.est?'연봉은 공개된 초봉·업종 자료를 바탕으로 한 대략적인 추정치라 실제 생산직과 다를 수 있어요.':'연봉은 공개된 정리 자료에 나온 대략적인 수치예요.')+' 연차·교대조·직무에 따라 크게 달라지니 참고만 하세요.</div>':'')+(notes?'<div class="nt">'+esc(notes)+'</div>':'')+
+      (c.link?'<p><a class="link" href="'+c.link+'" target="_blank" rel="noopener noreferrer">공식 채용 페이지</a></p>':'')+'</div>';
+    dtEl.querySelector("button").addEventListener("click",function(){dtEl.close();});
+    if(dtEl.showModal)dtEl.showModal();else dtEl.setAttribute("open","");
+  }
+  dtEl.addEventListener("click",function(e){if(e.target===dtEl)dtEl.close();});
+  function openFrom(t){var n=t.closest&&t.closest("[data-co]");if(n&&!t.closest("a"))showDetail(n.getAttribute("data-co"));}
+  document.addEventListener("click",function(e){openFrom(e.target);});
+  document.addEventListener("keydown",function(e){if((e.key==="Enter"||e.key===" ")&&e.target.hasAttribute&&e.target.hasAttribute("data-co")){e.preventDefault();showDetail(e.target.getAttribute("data-co"));}});
+  drawStats();renderList();
+  drawFilters(); drawLedger();
+  document.getElementById("nodata").innerHTML='<b>대졸 신입 공고만 보였던 회사</b><br>'+esc(NODATA);
+})();
+</script>
+</body>
+</html>
