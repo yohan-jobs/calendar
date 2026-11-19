@@ -200,9 +200,9 @@ dialog#dt::backdrop{background:rgba(0,0,0,.45)}
 <div class="wrap">
 
 <header>
-  <div class="kicker">대기업 생산직에 대한 모든 것</div>
+  <div class="kicker">생산모 · 생산직에 대한 모든 것</div>
   <h1>대기업 생산직 채용 달력</h1>
-  <a class="hdr-yt" href="https://www.youtube.com/@bozone9station" target="_blank" rel="noopener noreferrer">▶ 유튜브 채널 구독하고 새 영상 받기</a>
+  <a class="hdr-yt" href="https://www.youtube.com/@saengsanmo" target="_blank" rel="noopener noreferrer">▶ 유튜브 채널 구독하고 새 영상 받기</a>
   <div class="asof"><span>마지막 확인</span><b class="num">2026.11.15</b><span>· 공고는 회사 사정으로 바뀌거나 연장될 수 있어요</span></div>
   <div class="stats" id="stats"></div>
 </header>
@@ -269,10 +269,10 @@ dialog#dt::backdrop{background:rgba(0,0,0,.45)}
 
 <section class="promo" aria-label="유튜브 채널">
   <div>
-    <strong>대기업 생산직에 대한 모든 것</strong>
+    <strong>생산모 · 생산직에 대한 모든 것</strong>
     <p>마이스터고·공고 루트, 전문대 루트, 지역별 대기업 정보까지 영상으로 하나씩 정리합니다.</p>
   </div>
-  <a class="btn" href="https://www.youtube.com/@bozone9station" target="_blank" rel="noopener noreferrer">유튜브 채널 보러가기</a>
+  <a class="btn" href="https://www.youtube.com/@saengsanmo" target="_blank" rel="noopener noreferrer">유튜브 채널 보러가기</a>
 </section>
 <footer>
   틀린 내용이나 빠진 공고는 채널 댓글로 알려주세요. 이 페이지는 공개된 채용 정보를 바탕으로 정리했고 연봉은 대략적인 수치예요. 지원 전에 공식 공고를 꼭 확인하세요.
@@ -282,7 +282,7 @@ dialog#dt::backdrop{background:rgba(0,0,0,.45)}
 <script>
 (function(){
   "use strict";
-  /* ---------- data (확인일 2026-11-15) ---------- */
+  /* ---------- data (확인일 2026-11-19) ---------- */
   var EVENTS=[
     {co:"포스코",t:"생산기술직 인턴 (상반기)",s:null,e:"2026-03-11"},
     {co:"SK하이닉스",t:"전임직(생산직) 메인트·오퍼레이터 (4월)",s:"2026-04-13",e:"2026-04-22"},
@@ -299,6 +299,7 @@ dialog#dt::backdrop{background:rgba(0,0,0,.45)}
     {co:"SK하이닉스",t:"전임직(생산직) 메인트·오퍼레이터 (11월)",s:"2026-11-10",e:"2026-11-17",et:"15:00"},
     {co:"한화오션",t:"상반기 생산직 신입사원",s:null,e:"2026-04-30"},
     {co:"현대트랜시스",t:"생산직 사원 (기간제)",s:"2026-07-31",e:"2026-08-09"},
+    {co:"현대트랜시스",t:"단기 생산직 사원",s:"2026-11-17",e:"2026-11-22",et:"23:59"},
     {co:"현대위아",t:"하반기 전문 기능인력(생산직) 신입",s:null,e:"2026-10-06",et:"10:00"},
     {co:"SK바이오사이언스",t:"하반기 신입 원액/완제생산(DS/DP)",s:"2026-10-08",e:"2026-10-21"},
     {co:"현대로템",t:"기술직(생산직) 신입",s:"2026-10-16",e:"2026-10-25"},
@@ -383,6 +384,7 @@ dialog#dt::backdrop{background:rgba(0,0,0,.45)}
   function nameOk(co){return !query||co.toLowerCase().replace(/\s/g,"").indexOf(query)>=0;}
   function visEv(){return EVENTS.filter(function(ev){return (activeCat==="전체"||CHAP_OF[ev.co]===activeCat)&&nameOk(ev.co)&&regOk(ev.co);});}
   OPEN_INFO["쿠쿠전자"]={role:"4분기 생산직 사원",who:"학력 무관, 경력 무관",place:"경남 양산"};
+  OPEN_INFO["현대트랜시스"]={role:"단기 생산직 사원",who:"학력·근무지는 공식 공고에서 확인",place:"공식 공고에서 확인",flow:"자세한 전형은 공고문에서 확인"};
   var COMPANIES=[
     {co:"SK하이닉스",cat:"반도체",recent:"11월 전임직(생산직) 메인트·오퍼레이터 11/10~11/17 15:00",who:"학력 제한 폐지",pattern:"올해 4월(4/13~22)과 11월 두 차례 모집",next:"",link:"https://www.skcareers.com"},
     {co:"기아",cat:"자동차",recent:"설비기술인력 11/5~11/18 15:00, 앞서 8/10~8/21 엔지니어(생산직)",who:"고등학교 졸업 이상",pattern:"올해 8월과 11월 두 차례 모집",next:"",link:"https://career.kia.com"},
@@ -399,7 +401,7 @@ dialog#dt::backdrop{background:rgba(0,0,0,.45)}
     {co:"금호석유화학",cat:"조선·화학",recent:"2026 기술직 인턴(울산·여수) 마감 (접수일 미확인), 하반기 신입 8/31~9/11",who:"기술직 인턴 고졸 이상",pattern:"",next:"",check:true,link:"https://kkpc-recruit2026.com"},
     {co:"현대로템",cat:"기계·방산",recent:"기술직(생산직) 신입 10/16~10/25",who:"고등학교 졸업 이상 (남성은 병역필 또는 면제)",pattern:"수시 채용, 지원서에서 근무지 선택",next:"",extra:"서류 → 온라인 인성검사 → 1차 면접·실기/필기 → 2차 면접·신체검사. 문의처는 창원공장 인사지원팀"},
     {co:"현대위아",cat:"자동차",recent:"하반기 전문 기능인력(생산직) 신입 계약직, 10/6 10시 마감",who:"고졸 이상",pattern:"",next:"",check:true,extra:"근무지 창원·평택"},
-    {co:"현대트랜시스",cat:"자동차",recent:"생산직 사원(기간제) 7/31~8/9, 앞서 6월·8월에도 단기 모집",who:"고등학교·전문대 졸업자",pattern:"기간제로 여러 차례 수시 모집, 계약은 최대 2년까지 연장 가능",next:"",extra:"근무지 충남 서산"},
+    {co:"현대트랜시스",cat:"자동차",recent:"단기 생산직 사원 11/17 10:30~11/22 23:59, 앞서 생산직 사원(기간제) 7/31~8/9",who:"고등학교·전문대 졸업자",pattern:"기간제로 여러 차례 수시 모집, 계약은 최대 2년까지 연장 가능",next:"",extra:"근무지 충남 서산"},
     {co:"한화오션",cat:"조선·화학",recent:"상반기 생산직 신입사원 4/30 마감, 하반기 신입 9/14~9/30은 직무 확인 못함",who:"고등학교 이상 이공계열 전공, 군필 또는 면제",pattern:"",next:"",check:true,extra:"특수선 업무는 신원조회 승인 필요",link:"https://hanwhaocean-1.career.greetinghr.com"},
     {co:"SK바이오사이언스",cat:"바이오",recent:"하반기 신입 원액/완제생산(DS/DP) 10/8~10/21",who:"학력 조건은 공고문에서 확인 필요",pattern:"",next:"",check:true,extra:"서류 → SKCT → 면접 → 채용검진",link:"https://www.skcareers.com"},
     {co:"셀트리온",cat:"바이오",recent:"2026 분야별 신입/경력 수시채용 마감 (접수일 미확인)",who:"고졸 이상으로 표기, 생산·생산관리 직무 포함",pattern:"수시 채용",next:"",check:true,extra:"근무지 인천 연수구"},
